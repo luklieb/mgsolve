@@ -8,6 +8,7 @@
 
 #define GHOST false
 
+// converts a timeval struct to seconds
 double timevalToDouble( struct timeval *t ){
     return (double)(t->tv_sec) + (((double)(t->tv_usec))/1000000.0);
 }
@@ -40,11 +41,23 @@ void Red_Black_Gauss(int nx, int ny, std::vector<double> &grid, std::vector<doub
      }
 }
 
+// test liefert das gleiche wie andere version
+void Red_Black_Gauss_v(int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, double h){
+    
+     for(int iterations=0; iterations<nx*ny; iterations++){
+         for(int m=1; m<ny-1; m++){
+             for(int q=1; q<nx-1; q++){
+                grid[m*nx+q] = (1.0/4.0) * (h*h*f_x_y[m*nx+q] + (grid[m*nx+(q-1)]+grid[m*nx+(q+1)]+grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
+             }
+         }
+     }
+}
+
 int main(int argc, char **argv){
 
 	// Ueberpruefung, ob Eingabeparamter passen
     if(argc != 3){
-		fprintf(stderr, "Usage: Wrong numbers of matrices.");
+		fprintf(stderr, "Usage: ./mgsolve l n\n");
 		exit(EXIT_SUCCESS);
 	}
 	
@@ -53,14 +66,18 @@ int main(int argc, char **argv){
     l = atoi(argv[1]);
     n = atoi(argv[2]);
     fprintf(stderr, "%d/n", n);
+	
+	// nx and ny are the total points in x and y direction
     int nx = (int)(pow(2,l)+1);
     int ny = (int)(pow(2,l)+1);
     double h = 1.0/(nx-1);
 
-    // Anlegen von f_x_y:
+	// Bei Neumann Randwerte werden in x-Richtung ghost-Layers benoetigt
     if(GHOST){
         nx=nx+2;
     }
+	
+	// Anlegen von f_x_y:
     std::vector<double> f_x_y;
 	
     // Speicher fuer das Gitter allokieren:
@@ -69,9 +86,10 @@ int main(int argc, char **argv){
     // Initialisierung des Gitters
     if(GHOST){
         f_x_y = std::vector<double>(nx*ny, 2.0);
-        for(int i=0; i<nx; i++){
-            grid[i] = i*h*(1-i*h);
-            grid[nx*(ny-1)+i] = i*h*(1-i*h);
+		// Dirichlet RDB setzten aber nicht auf den Ghost-Layers 
+        for(int i=0; i<nx-2; i++){
+            grid[i+1] = i*h*(1-i*h);
+            grid[nx*(ny-1)+i+1] = i*h*(1-i*h);
         }
         for(int i=0; i<ny; i++){
             grid[i*nx] = -h;
@@ -80,8 +98,8 @@ int main(int argc, char **argv){
     }
     else{
         f_x_y = std::vector<double>(nx*ny, 0.0);
-        for(int i=0; i<ny; i++){
-            grid[nx*(ny-1)+i] = sin(M_PI*i)*sinh(M_PI);
+        for(int i=0; i<nx; i++){
+            grid[nx*(ny-1)+i] = sin(M_PI*i*h)*sinh(M_PI);
         }
     }
 
@@ -110,6 +128,7 @@ int main(int argc, char **argv){
         for(int t=0; t<=nx; t++){
             double f = (double)t/(double)nx;
             double q = (double)j/(double)ny;
+// warum 2x f ??
             fprintf(out, "%.5lf %.5lf %.8lf\n", f*2, q, grid[j*ny+t]);
         }
 		fprintf(out, "\n");
