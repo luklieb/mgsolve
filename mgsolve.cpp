@@ -46,6 +46,21 @@ void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std:
   }
 }
 
+void interpolation( grid[l-1] to c ){
+    for( int i=0; i<nx[l]; i++ ){
+      for( int j=0; j<ny[l]; j++ ){
+	if( i%2 == 0 && j%2 == 0 ){
+	  // wert uebernehmen
+	}else if( i%2 != 0 && j%2 != 0 ){
+	  // kreuz
+	}else if( i%2 == 0 && j%2 != 0 ){
+	  // vertikal
+	}else{
+	  // horizontal 
+	}
+      }
+    }
+}
 
 void Red_Black_Gauss(int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, double h, int numIterations){
     
@@ -94,7 +109,7 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
     }
     // interpolation
     std::vector<double> c( nx[l]*ny[l], 0.0 );
-    interpolate( c2h to c );
+    interpolation( grid[l-1] to c );
     for( int i=0; i<nx[l-1]; i++ ){
       for( int j=0; j<ny[l-1]; j++ ){
 	grid[l][i*nx[l]+j] += c[i*nx[l]+j];
