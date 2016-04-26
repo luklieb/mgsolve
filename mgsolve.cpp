@@ -26,26 +26,34 @@ double residuum(int nx, int ny, std::vector<double> &grid, std::vector<double> &
     return residuum;
 }
 
+void coarsening( l, std::vector<std::vector<double>> grid, std::vector<double> nx, std::vector<double> ny ){
+    
+  for( int i=0; i<nx[l-1]; i++ ){
+    for( int j=0; j<ny[l-1]; j++ ){
+      
+    }
+  }
+}
+
+
 void Red_Black_Gauss_v(int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, double h){
     
      for(int iterations=0; iterations<nx*ny; iterations++){
-		 for(int m=1; m<ny; m++){  
-			 for(int m=1; m<ny-1; m++){
-				 int q=1;
-				 if(m%2 == 0){
-					 q++;
-				 }
-				 for(; q<nx-1; q=q+2){
-					 grid[m*nx+q] = (1.0/4.0) * (h*h*f_x_y[m*nx+q] + (grid[m*nx+(q-1)]+grid[m*nx+(q+1)]+grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
-				 }
-			 }
+		for(int m=1; m<ny-1; m++){
+			int q=1;
+			if(m%2 == 0){
+				 q++;
+			}
+			for(; q<nx-1; q=q+2){
+				 grid[m*nx+q] = (1.0/4.0) * (h*h*f_x_y[m*nx+q] + (grid[m*nx+(q-1)]+grid[m*nx+(q+1)]+grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
+			}
 		}
 		for(int m=1; m<ny-1; m++){
-            int q=1;
-            if(m%2 != 0){
-                q++;
-            }
-            for(; q<nx-1; q=q+2){
+			int q=1;
+			if(m%2 != 0){
+			      q++;
+			}
+			for(; q<nx-1; q=q+2){
 				grid[m*nx+q] = (1.0/4.0) * (h*h*f_x_y[m*nx+q] + (grid[m*nx+(q-1)]+grid[m*nx+(q+1)]+grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
 			}
 		}
@@ -67,52 +75,70 @@ int main(int argc, char **argv){
     fprintf(stderr, "%d/n", n);
 	
 	// nx and ny are the total points in x and y direction
-    int nx = (int)(pow(2,l)+1);
-    int ny = (int)(pow(2,l)+1);
-    double h = 1.0/(nx-1);
+    std::vector<int> nx( l, 0 );
+    std::vector<int> ny( l, 0 );
+    std::vector<double>  h( l, 0 );
+    for( int i=l-1; i>=0; i-- ){
+      nx[i] = (int)(pow(2,i)+1);
+      ny[i] = (int)(pow(2,i)+1);
+      h[i] = 1.0/(nx[i]-1);
+    }
 
 	// Bei Neumann Randwerte werden in x-Richtung ghost-Layers benoetigt
     if(GHOST){
-        nx=nx+2;
+      for( int i=0; i<l; i++)
+        nx[i]=nx[i]+2;
     }
 	
 	// Anlegen von f_x_y:
-    std::vector<double> f_x_y;
-	
+    std::vector<std::vector<double>> f_x_y(l);
+    for( int i=l-1; i>=0; i--){
+	f_x_y[i] = std::vector<double>(nx[i]*ny[i],0.0);
+    }
+    
     // Speicher fuer das Gitter allokieren:
-    std::vector<double> grid(nx*ny, 0.0);
-
+    std::vector<std::vector<double>> grid(l);
+    
     // Initialisierung des Gitters
     if(GHOST){
-        f_x_y = std::vector<double>(nx*ny, 2.0);
-		// Dirichlet RDB setzten aber nicht auf den Ghost-Layers 
-        for(int i=0; i<nx-2; i++){
-            grid[i+1] = i*h*(1-i*h);
-            grid[nx*(ny-1)+i+1] = i*h*(1-i*h);
-        }
-        for(int i=0; i<ny; i++){
-            grid[i*nx] = -h;
-            grid[i*nx+(nx-1)] = -h;
-        }
+        for( int i=l-1; i>=0; i--){
+	  grid[i] = std::vector<double>(nx[i]*ny[i], 2.0);
+	}
+	
+	// Dirichlet RDB setzten aber nicht auf den Ghost-Layers 
+	for( int j=l-1; j>=0; j--){
+	  for(int i=0; i<nx[j]-2; i++){
+	      grid[j][i+1] = i*h[j]*(1-i*h[j]);
+	      grid[j][nx[j]*(ny[j]-1)+i+1] = i*h[j]*(1-i*h[j]);
+	  }
+	  for(int i=0; i<ny[j]; i++){
+	      grid[j][i*nx[j]] = -h[j];
+	      grid[j][i*nx[j]+(nx[j]-1)] = -h[j];
+	  }
+	}
     }
     else{
-        f_x_y = std::vector<double>(nx*ny, 0.0);
-        for(int i=0; i<nx; i++){
-            grid[nx*(ny-1)+i] = sin(M_PI*i*h)*sinh(M_PI);
+      for( int i=l-1; i>=0; i--){
+	grid[i] = std::vector<double>(nx[i]*ny[i],0.0);
+      }
+      for( int j=l-1; j>=0; j--){
+        for(int i=0; i<nx[j]; i++){
+            grid[j][nx[j]*(ny[j]-1)+i] = sin(M_PI*i*h[j])*sinh(M_PI);
         }
+      }
     }
 
 	// TIMER RED_BLACK_GAUSS
     struct timeval t1;
     gettimeofday(&t1, NULL);
 
-    Red_Black_Gauss_v(nx, ny, grid, f_x_y, h);
+    Red_Black_Gauss_v(nx[l-1], ny[l-1], grid[l-1], f_x_y[l-1], h[l-1]);
 
     struct timeval t2;
     gettimeofday(&t2, NULL);
     fprintf(stdout, "Timer Red_Black_Gauss: %lf\n", timevalToDouble(&t2)-timevalToDouble(&t1));
 
-    double res = residuum(nx, ny, grid, f_x_y, h);
+    double res = residuum(nx[l-1], ny[l-1], grid[l-1], f_x_y[l-1], h[l-1]);
 
     // Oeffnen der Ausgabedatei
 	FILE *out = fopen("./solution.txt", "w");
@@ -123,12 +149,12 @@ int main(int argc, char **argv){
 
     // Ausgabe fuer solution.txt
     fprintf(out, "# x y u(x,y)\n");
-    for(int j=0; j<ny; j++){
-        for(int t=0; t<nx; t++){
-            double f = (double)t/(double)(nx-1);
-            double q = (double)j/(double)(ny-1);
+    for(int j=0; j<ny[l-1]; j++){
+        for(int t=0; t<nx[l-1]; t++){
+            double f = (double)t/(double)(nx[l-1]-1);
+            double q = (double)j/(double)(ny[l-1]-1);
 
-            fprintf(out, "%.5lf %.5lf %.8lf\n", f, q, grid[j*ny+t]);
+            fprintf(out, "%.5lf %.5lf %.8lf\n", f, q, grid[l-1][j*ny[l-1]+t]);
         }
 	fprintf(out, "\n");
     }
