@@ -26,30 +26,30 @@ double residuum(int nx, int ny, std::vector<double> &grid, std::vector<double> &
     return residuum;
 }
 
-void Red_Black_Gauss(int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, double h){
-    
-     double const faktor = 1.0f/(2.0f/h + 2.0f/h);
-     double const beta = 1.0f/h;
-     double const gamma = 1.0f/h;
-
-     for(int iterations=0; iterations<nx*ny; iterations++){
-         for(int m=1; m<ny-1; m++){
-             for(int q=1; q<nx-1; q++){
-                grid[m*nx+q] = (faktor) * (f_x_y[m*nx+q] + (beta)*(grid[m*nx+(q-1)]+grid[m*nx+(q+1)]) + (gamma)*(grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
-             }
-         }
-     }
-}
-
 void Red_Black_Gauss_v(int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, double h){
     
      for(int iterations=0; iterations<nx*ny; iterations++){
-         for(int m=1; m<ny-1; m++){
-             for(int q=1; q<nx-1; q++){
-                grid[m*nx+q] = (1.0/4.0) * (h*h*f_x_y[m*nx+q] + (grid[m*nx+(q-1)]+grid[m*nx+(q+1)]+grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
-             }
-         }
-     }
+		 for(int m=1; m<ny; m++){  
+			 for(int m=1; m<ny-1; m++){
+				 int q=1;
+				 if(m%2 == 0){
+					 q++;
+				 }
+				 for(; q<nx-1; q=q+2){
+					 grid[m*nx+q] = (1.0/4.0) * (h*h*f_x_y[m*nx+q] + (grid[m*nx+(q-1)]+grid[m*nx+(q+1)]+grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
+				 }
+			 }
+		}
+		for(int m=1; m<ny-1; m++){
+            int q=1;
+            if(m%2 != 0){
+                q++;
+            }
+            for(; q<nx-1; q=q+2){
+				grid[m*nx+q] = (1.0/4.0) * (h*h*f_x_y[m*nx+q] + (grid[m*nx+(q-1)]+grid[m*nx+(q+1)]+grid[(m-1)*nx+q]+grid[(m+1)*nx+q]));
+			}
+		}
+	}
 }
 
 int main(int argc, char **argv){
