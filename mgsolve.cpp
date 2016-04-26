@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <math.h>
 #include <vector>
-	//test
+
 #define GHOST false
 
 // converts a timeval struct to seconds
@@ -41,7 +41,6 @@ void Red_Black_Gauss(int nx, int ny, std::vector<double> &grid, std::vector<doub
      }
 }
 
-// test liefert das gleiche wie andere version
 void Red_Black_Gauss_v(int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, double h){
     
      for(int iterations=0; iterations<nx*ny; iterations++){
@@ -107,7 +106,7 @@ int main(int argc, char **argv){
     struct timeval t1;
     gettimeofday(&t1, NULL);
 
-    Red_Black_Gauss(nx, ny, grid, f_x_y, h);
+    Red_Black_Gauss_v(nx, ny, grid, f_x_y, h);
 
     struct timeval t2;
     gettimeofday(&t2, NULL);
@@ -124,15 +123,15 @@ int main(int argc, char **argv){
 
     // Ausgabe fuer solution.txt
     fprintf(out, "# x y u(x,y)\n");
-    for(int j=0; j<=ny; j++){
-        for(int t=0; t<=nx; t++){
-            double f = (double)t/(double)nx;
-            double q = (double)j/(double)ny;
-// warum 2x f ??
-            fprintf(out, "%.5lf %.5lf %.8lf\n", f*2, q, grid[j*ny+t]);
+    for(int j=0; j<ny; j++){
+        for(int t=0; t<nx; t++){
+            double f = (double)t/(double)(nx-1);
+            double q = (double)j/(double)(ny-1);
+
+            fprintf(out, "%.5lf %.5lf %.8lf\n", f, q, grid[j*ny+t]);
         }
-		fprintf(out, "\n");
-	}
-	fclose(out);
+	fprintf(out, "\n");
+    }
+    fclose(out);
     fprintf(stdout, "Residuum: %lf\n", res);
 }
