@@ -26,7 +26,7 @@ double residuum(int nx, int ny, std::vector<double> &grid, std::vector<double> &
     return residuum;
 }
 
-void residual( int l, int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, std::vector<double> &res, double h){
+void residual( int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, std::vector<double> &res, double h){
     for(int i=1; i<ny-1; i++){
         for(int k=1; k<nx-1; k++){
                 res[i*nx+k] = ((-1.0/h)*(grid[i*nx+(k-1)]+grid[i*nx+(k+1)]) - (1.0/h)*(grid[(i-1)*nx+k]+grid[(i+1)*nx+k]) + ((2.0/h+2.0/h)*grid[i*nx+k]) - f_x_y[i*nx+k]);
@@ -35,7 +35,7 @@ void residual( int l, int nx, int ny, std::vector<double> &grid, std::vector<dou
 }
 
 // restrict a grid (from) with the full weighting stencile to another grid (to). From has size nx[l] and to has size nx[l-1].
-void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std::vector<double>& nx, std::vector<double>& ny ){
+void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std::vector<int>& nx, std::vector<int>& ny ){
     
   for( int i=0; i<nx[l-1]; i++ ){
     for( int j=0; j<ny[l-1]; j++ ){
@@ -46,17 +46,21 @@ void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std:
   }
 }
 
-void interpolation( grid[l-1] to c ){
+void interpolation( int l, std::vector<double>& from, std::vector<double>& to, std::vector<int>& nx, std::vector<int>& ny ){
     for( int i=0; i<nx[l]; i++ ){
       for( int j=0; j<ny[l]; j++ ){
 	if( i%2 == 0 && j%2 == 0 ){
 	  // wert uebernehmen
+	  to[i*nx[l]+j] = from[(i/2)*nx[l-1]+(j/2)];
 	}else if( i%2 != 0 && j%2 != 0 ){
 	  // kreuz
+	  to[i*nx[l]+j] = (double)( from[(i/2)*nx[l-1]+(j/2)] + from[((i/2)+1)*nx[l-1]+(j/2)] + from[(i/2)*nx[l-1]+(j/2)+1] + from[((i/2)+1)*nx[l-1]+(j/2)+1] ) / 4.0;
 	}else if( i%2 == 0 && j%2 != 0 ){
 	  // vertikal
+	  to[i*nx[l]+j] = (double)(from[(i/2)*nx[l-1]+(j/2)] + from[(i/2)*nx[l-1]+(j/2)+1]) / 2.0;
 	}else{
 	  // horizontal 
+	  to[i*nx[l]+j] = (double)(from[(i/2)*nx[l-1]+(j/2)] + from[((i/2)+1)*nx[l-1]+(j/2)]) / 2.0;
 	}
       }
     }
@@ -86,30 +90,28 @@ void Red_Black_Gauss(int nx, int ny, std::vector<double> &grid, std::vector<doub
 	}
 }
 
-void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::vector<double>>& f, std::vector<double>& nx,
-		std::vector<double>& ny, std::vector<double>& h, std::vector<std::vector<double>>& res, int v1=2, int v2=1, int gamma=1 ){
-  
-  // l = 0 entspricht Level 1 
-  l--;
+void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::vector<double>>& f, std::vector<int>& nx,
+		std::vector<int>& ny, std::vector<double>& h, std::vector<std::vector<double>>& res, int v1=2, int v2=1, int gamma=1 ){
   
   //Presmoothing
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v1 );
-  
+ fprintf( stderr, "RBGS finished\n");
   // Residuum
-  residual( l, nx[l], ny[l], grid[l], f[l], res[l], h[l] );
-  
+  residual( nx[l], ny[l], grid[l], f[l], res[l], h[l] );
+   fprintf( stderr, "residual finished\n");
   // restrict residual
   coarsening( l, res[l], f[l-1], nx, ny );
-  
-  if( l == 1 ){
+   fprintf( stderr, "coarsening finished\n");
+  if( l <= 1 ){
     Red_Black_Gauss( nx[l-1], ny[l-1], grid[l-1], f[l-1], h[l-1], 10 );
   }else{
     for( int i=0; i<gamma; i++ ){
-      multigrid( l, grid, f, nx, ny, h, res, v1, v2, gamma );
+      multigrid( l-1, grid, f, nx, ny, h, res, v1, v2, gamma );
     }
     // interpolation
     std::vector<double> c( nx[l]*ny[l], 0.0 );
-    interpolation( grid[l-1] to c );
+    interpolation( l, grid[l-1], c, nx, ny );
+	 fprintf( stderr, "interpolation finished\n");
     for( int i=0; i<nx[l-1]; i++ ){
       for( int j=0; j<ny[l-1]; j++ ){
 	grid[l][i*nx[l]+j] += c[i*nx[l]+j];
@@ -199,8 +201,9 @@ int main(int argc, char **argv){
     struct timeval t1;
     gettimeofday(&t1, NULL);
 
-    Red_Black_Gauss(nx[l-1], ny[l-1], grid[l-1], f_x_y[l-1], h[l-1], 1000);
-
+fprintf( stderr, "starting multigrid\n");
+    multigrid( l-1, grid, f_x_y, nx, ny, h, res );
+fprintf( stderr, "multigrid finished successfully\n");
     struct timeval t2;
     gettimeofday(&t2, NULL);
     fprintf(stdout, "Timer Red_Black_Gauss: %lf\n", timevalToDouble(&t2)-timevalToDouble(&t1));
