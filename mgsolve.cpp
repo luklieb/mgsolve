@@ -91,24 +91,23 @@ void Red_Black_Gauss(int nx, int ny, std::vector<double> &grid, std::vector<doub
 }
 
 void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::vector<double>>& f, std::vector<int>& nx,
-		std::vector<int>& ny, std::vector<double>& h, std::vector<std::vector<double>>& res, int v1=2, int v2=1, int gamma=1 ){
-  
+        std::vector<int>& ny, std::vector<double>& h, std::vector<std::vector<double>>& res, int v1=2, int v2=1, int gamma=1){
   //Presmoothing
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v1 );
- fprintf( stderr, "RBGS finished\n");
+  fprintf( stderr, "RBGS finished\n");
   // Residuum
   residual( nx[l], ny[l], grid[l], f[l], res[l], h[l] );
-   fprintf( stderr, "residual finished\n");
+  fprintf( stderr, "residual finished\n");
   // restrict residual
   coarsening( l, res[l], f[l-1], nx, ny );
-   fprintf( stderr, "coarsening finished\n");
+  fprintf( stderr, "coarsening finished\n");
   if( l <= 1 ){
     Red_Black_Gauss( nx[l-1], ny[l-1], grid[l-1], f[l-1], h[l-1], 10 );
   }else{
     for( int i=0; i<gamma; i++ ){
       multigrid( l-1, grid, f, nx, ny, h, res, v1, v2, gamma );
     }
-    // interpolation
+  // interpolation
     std::vector<double> c( nx[l]*ny[l], 0.0 );
     interpolation( l, grid[l-1], c, nx, ny );
 	 fprintf( stderr, "interpolation finished\n");
@@ -167,6 +166,9 @@ int main(int argc, char **argv){
       ny[i] = (int)(pow(2,i)+1);
       h[i] = 1.0/(nx[i]-1);
     }
+    double convergence = 0.0;
+    double old_residuum = 0.0;
+    double new_residuum = 0.0;
 
 	// Bei Neumann Randwerte werden in x-Richtung ghost-Layers benoetigt
     if(GHOST){
@@ -222,20 +224,35 @@ int main(int argc, char **argv){
     struct timeval t1;
     gettimeofday(&t1, NULL);
 
-fprintf( stderr, "starting multigrid\n");
-    multigrid( l-1, grid, f_x_y, nx, ny, h, res );
-fprintf( stderr, "multigrid finished successfully\n");
+    fprintf( stderr, "starting multigrid\n");
+
+    for(int j=0; j<n; j++){
+        multigrid( l-1, grid, f_x_y, nx, ny, h, res, n);
+        new_residuum = residuum(nx[l-1], ny[l-1], grid[l-1], f_x_y[l-1], h[l-1]);
+        fprintf(out, "L2 Norm: %d/n", new_residuum);
+        if(j>0){
+            convergence = new_residuum / old_residuum;
+            fprintf(out, "Convergence: %d/n", convergence);
+            old_residuum = new_residuum;
+        }
+    }
+
+    fprintf( stderr, "multigrid finished successfully\n");
     struct timeval t2;
     gettimeofday(&t2, NULL);
-    fprintf(stdout, "Timer Red_Black_Gauss: %lf\n", timevalToDouble(&t2)-timevalToDouble(&t1));
-
-    double resid = residuum(nx[l-1], ny[l-1], grid[l-1], f_x_y[l-1], h[l-1]);
+    fprintf(stdout, "Timer Multigrid: %lf\n", timevalToDouble(&t2)-timevalToDouble(&t1));
 
     // Oeffnen der Ausgabedatei
-	FILE *out = fopen("./solution.txt", "w");
+    FILE *out = fopen("./solution.txt", "w");
 	if(out == NULL){
 		perror("fopen");
 		exit(EXIT_FAILURE);
+    }
+
+    FILE *out_error = fopen("./error.txt", "w");
+    if(out_error == NULL){
+        perror("fopen");
+        exit(EXIT_FAILURE);
     }
 
     // Ausgabe fuer solution.txt
@@ -250,5 +267,10 @@ fprintf( stderr, "multigrid finished successfully\n");
 	fprintf(out, "\n");
     }
     fclose(out);
-    fprintf(stdout, "Residuum: %lf\n", resid);
+
+    // Ausgabe fuer error.txt
+    fprintf(out, "\n", );
+    fprintf(out_error, "\n");
+    }
+    fclose(out_error);
 }
