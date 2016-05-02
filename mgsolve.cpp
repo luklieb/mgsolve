@@ -128,6 +128,7 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v2 );
 }
 
+<<<<<<< HEAD
 void testInterpolation(){
 	std::vector<double> to( { 0.0, 0.0, 0.0, 0.0, 0.0,
 					  0.0, 0.0, 0.0, 0.0, 0.0,
@@ -152,10 +153,15 @@ void testInterpolation(){
 
 void testCoarsening(){
 	std::vector<double> from( { 1.0, 1.0, 1.0, 1.0, 1.0,
+=======
+void test(){
+	std:vector<double> from( { 1.0, 1.0, 1.0, 1.0, 1.0,
+>>>>>>> c91d9e62699c4b9b9812974370ef4714b89fd52b
 					  2.0, 2.0, 2.0, 2.0, 2.0,
 					  3.0, 3.0, 3.0, 3.0, 3.0,
 					  4.0, 4.0, 4.0, 4.0, 4.0, 
 					  5.0, 5.0, 5.0, 5.0, 5.0 } );
+<<<<<<< HEAD
 	std::vector<double> to( { 0.0, 0.0, 0.0,
 				    0.0, 0.0, 0.0,
 				    0.0, 0.0, 0.0 } );
@@ -163,6 +169,15 @@ void testCoarsening(){
 	std::vector<int> nx( {3, 5} );
 	std::vector<int> ny( {3, 5} );
 	coarsening( 1, from, to, nx, ny );
+=======
+	std:vector<double> to( { 0.0, 0.0, 0.0,
+							 0.0, 0.0, 0.0,
+							 0.0, 0.0, 0.0 } );
+
+	std::vector<int> nx( {5, 3} );
+	std::vector<int> ny( {5, 3} );
+	interpolation( 2, from, to, nx, ny );
+>>>>>>> c91d9e62699c4b9b9812974370ef4714b89fd52b
 	
 	for( int i=0; i<3; i++ ){
 		for( int j=0; j<3; j++ ){
@@ -171,7 +186,10 @@ void testCoarsening(){
 		fprintf( stderr, "\n" );
 	}
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> c91d9e62699c4b9b9812974370ef4714b89fd52b
 int main(int argc, char **argv){
 
 	// Ueberpruefung, ob Eingabeparamter passen
