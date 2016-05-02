@@ -123,6 +123,27 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v2 );
 }
 
+void test(){
+	std:vector<double> from( { 1.0, 1.0, 1.0, 1.0, 1.0,
+					  2.0, 2.0, 2.0, 2.0, 2.0,
+					  3.0, 3.0, 3.0, 3.0, 3.0,
+					  4.0, 4.0, 4.0, 4.0, 4.0, 
+					  5.0, 5.0, 5.0, 5.0, 5.0 } );
+	std:vector<double> to( { 0.0, 0.0, 0.0,
+							 0.0, 0.0, 0.0,
+							 0.0, 0.0, 0.0 } );
+
+	std::vector<int> nx( {5, 3} );
+	std::vector<int> ny( {5, 3} );
+	interpolation( 2, from, to, nx, ny );
+	
+	for( int i=0; i<3; i++ ){
+		for( int j=0; j<3; j++ ){
+			fprintf( stderr, "%lf, ", to[i*3+j]);
+		}
+		fprintf( stderr, "\n" );
+	}
+}
 int main(int argc, char **argv){
 
 	// Ueberpruefung, ob Eingabeparamter passen
