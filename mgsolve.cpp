@@ -37,8 +37,8 @@ void residual( int nx, int ny, std::vector<double> &grid, std::vector<double> &f
 // restrict a grid (from) with the full weighting stencile to another grid (to). From has size nx[l] and to has size nx[l-1].
 void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std::vector<int>& nx, std::vector<int>& ny ){
     
-  for( int i=0; i<nx[l-1]; i++ ){
-    for( int j=0; j<ny[l-1]; j++ ){
+  for( int i=1; i<nx[l-1]-1; i++ ){
+    for( int j=1; j<ny[l-1]-1; j++ ){
       to[i*nx[l-1]+j] = (   from[(2*i+1)*nx[l]+2*j-1] + 2*from[(2*i+1)*nx[l]+2*j] +   from[(2*i+1)*nx[l]+2*j+1]
 			+ 2*from[2*i*nx[l]+2*j-1]     + 4*from[2*i*nx[l]+2*j]     + 2*from[2*i*nx[l]+2*j+1]
 			+   from[(2*i-1)*nx[l]+2*j-1] + 2*from[(2*i-1)*nx[l]+2*j] +   from[(2*i-1)*nx[l]+2*j+1] ) /16.0;
@@ -103,8 +103,13 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
   coarsening( l, res[l], f[l-1], nx, ny );
    fprintf( stderr, "coarsening finished\n");
   if( l <= 1 ){
-    Red_Black_Gauss( nx[l-1], ny[l-1], grid[l-1], f[l-1], h[l-1], 10 );
+    Red_Black_Gauss( nx[l-1], ny[l-1], grid[l-1], f[l-1], h[l-1], 100 );
   }else{
+    for( int i=1; i<nx[l-1]-1; i++ ){
+      for( int j=1; j<ny[l-1]-1; j++ ){
+	grid[l-1][i*nx[l-1]+j] = 0.0;
+      }
+    }
     for( int i=0; i<gamma; i++ ){
       multigrid( l-1, grid, f, nx, ny, h, res, v1, v2, gamma );
     }
@@ -112,8 +117,8 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
     std::vector<double> c( nx[l]*ny[l], 0.0 );
     interpolation( l, grid[l-1], c, nx, ny );
 	 fprintf( stderr, "interpolation finished\n");
-    for( int i=0; i<nx[l-1]; i++ ){
-      for( int j=0; j<ny[l-1]; j++ ){
+    for( int i=1; i<nx[l]-1; i++ ){
+      for( int j=1; j<ny[l]-1; j++ ){
 	grid[l][i*nx[l]+j] += c[i*nx[l]+j];
       }
     }
@@ -121,6 +126,50 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
   
   //Postsmothing
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v2 );
+}
+
+void testInterpolation(){
+	std::vector<double> to( { 0.0, 0.0, 0.0, 0.0, 0.0,
+					  0.0, 0.0, 0.0, 0.0, 0.0,
+					  0.0, 0.0, 0.0, 0.0, 0.0,
+					  0.0, 0.0, 0.0, 0.0, 0.0, 
+					  0.0, 0.0, 0.0, 0.0, 0.0 } );
+	std::vector<double> from( { 1.0, 1.0, 1.0,
+				    2.0, 0.0, 2.0,
+				    3.0, 5.0, 3.0 } );
+
+	std::vector<int> nx( {3, 5} );
+	std::vector<int> ny( {3, 5} );
+	interpolation( 1, from, to, nx, ny );
+	
+	for( int i=0; i<5; i++ ){
+		for( int j=0; j<5; j++ ){
+			fprintf( stderr, "%lf, ", to[i*5+j]);
+		}
+		fprintf( stderr, "\n" );
+	}
+}
+
+void testCoarsening(){
+	std::vector<double> from( { 1.0, 1.0, 1.0, 1.0, 1.0,
+					  2.0, 2.0, 2.0, 2.0, 2.0,
+					  3.0, 3.0, 3.0, 3.0, 3.0,
+					  4.0, 4.0, 4.0, 4.0, 4.0, 
+					  5.0, 5.0, 5.0, 5.0, 5.0 } );
+	std::vector<double> to( { 0.0, 0.0, 0.0,
+				    0.0, 0.0, 0.0,
+				    0.0, 0.0, 0.0 } );
+
+	std::vector<int> nx( {3, 5} );
+	std::vector<int> ny( {3, 5} );
+	coarsening( 1, from, to, nx, ny );
+	
+	for( int i=0; i<3; i++ ){
+		for( int j=0; j<3; j++ ){
+			fprintf( stderr, "%lf, ", to[i*3+j]);
+		}
+		fprintf( stderr, "\n" );
+	}
 }
 
 int main(int argc, char **argv){
@@ -202,6 +251,7 @@ int main(int argc, char **argv){
     gettimeofday(&t1, NULL);
 
 fprintf( stderr, "starting multigrid\n");
+for( int i=0; i<n; i++)
     multigrid( l-1, grid, f_x_y, nx, ny, h, res );
 fprintf( stderr, "multigrid finished successfully\n");
     struct timeval t2;
