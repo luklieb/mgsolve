@@ -22,7 +22,7 @@ double residuum(int nx, int ny, std::vector<double> &grid, std::vector<double> &
                 sum += temp*temp;
         }
     }
-    residuum = sqrt((1.0/(nx*ny))*sum);
+    residuum = sqrt((1.0/((nx-1)*(ny-1)))*sum);
     return residuum;
 }
 
@@ -94,15 +94,12 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
         std::vector<int>& ny, std::vector<double>& h, std::vector<std::vector<double>>& res, int v1=2, int v2=1, int gamma=1){
   //Presmoothing
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v1 );
-  fprintf( stderr, "RBGS finished\n");
     
   // Residuum
   residual( nx[l], ny[l], grid[l], f[l], res[l], h[l] );
-  fprintf( stderr, "residual finished\n");
   
   // restrict residual
   coarsening( l, res[l], f[l-1], nx, ny );
-  fprintf( stderr, "coarsening finished\n");
 
   if( l <= 1 ){
     // solve
@@ -122,10 +119,7 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
   // interpolation
     std::vector<double> c( nx[l]*ny[l], 0.0 );
     interpolation( l, grid[l-1], c, nx, ny );
-    fprintf( stderr, "interpolation finished\n");
-
-
-    
+   
     // corretion
     for( int i=1; i<nx[l]-1; i++ ){
       for( int j=1; j<ny[l]-1; j++ ){
@@ -182,8 +176,6 @@ void testCoarsening(){
 }
 
 int main(int argc, char **argv){
-  testInterpolation();
-  testCoarsening();
   
     // Ueberpruefung, ob Eingabeparamter passen
     if(argc != 3){
@@ -195,7 +187,6 @@ int main(int argc, char **argv){
     int l, n;
     l = atoi(argv[1]);
     n = atoi(argv[2]);
-    fprintf(stderr, "%d/n", n);
 	
 	// nx and ny are the total points in x and y direction
     std::vector<int> nx( l, 0 );
@@ -204,7 +195,6 @@ int main(int argc, char **argv){
     for( int i=l-1; i>=0; i-- ){
       nx[i] = (int)(pow(2,i+1)+1);
       ny[i] = (int)(pow(2,i+1)+1);
-      fprintf(stderr, "%d ", nx[i] );
       h[i] = 1.0/(nx[i]-1);
     }
     double convergence = 0.0;
@@ -259,19 +249,12 @@ int main(int argc, char **argv){
         
 	}
     }
-
-     FILE *out_error = fopen("./error.txt", "w");
-    if(out_error == NULL){
-        perror("fopen");
-        exit(EXIT_FAILURE);
-    }
     
 	// TIMER RED_BLACK_GAUSS
     struct timeval t1;
     gettimeofday(&t1, NULL);
 
 
-    fprintf( stderr, "starting multigrid\n");
 
     for(int j=0; j<n; j++){
         multigrid( l-1, grid, f_x_y, nx, ny, h, res, n);
@@ -279,12 +262,11 @@ int main(int argc, char **argv){
         fprintf(stdout, "L2 Norm: %lf\n", new_residuum);
 	if(j>0){
             convergence = new_residuum / old_residuum;
-            fprintf(out_error, "Convergence: %lf\n", convergence);
+	    fprintf(stdout, "Convergence: %lf\n", convergence);
         }
         old_residuum = new_residuum;
     }
 
-    fprintf( stderr, "multigrid finished successfully\n");
 
     struct timeval t2;
     gettimeofday(&t2, NULL);
@@ -297,22 +279,26 @@ int main(int argc, char **argv){
 		exit(EXIT_FAILURE);
     }
 
-
+  double errorSum = 0.0;
     // Ausgabe fuer solution.txt
     fprintf(out, "# x y u(x,y)\n");
     for(int j=0; j<ny[l-1]; j++){
         for(int t=0; t<nx[l-1]; t++){
-            double f = (double)t/(double)(nx[l-1]-1);
-            double q = (double)j/(double)(ny[l-1]-1);
-
-            fprintf(out, "%.5lf %.5lf %.8lf\n", f, q, grid[l-1][j*ny[l-1]+t]);
+            double x = (double)t/(double)(nx[l-1]-1);
+            double y = (double)j/(double)(ny[l-1]-1);
+	    double temp = grid[l-1][j*ny[l-1]+t] - sin(x*M_PI)*sinh(y*M_PI);
+	    errorSum += temp * temp;
+	    
+            fprintf(out, "%.5lf %.5lf %.8lf\n", x, y, grid[l-1][j*ny[l-1]+t]);
         }
 	fprintf(out, "\n");
     }
     fclose(out);
 
+    
+    double error = sqrt((1.0/((nx[l-1]-1)*(ny[l-1]-1)))*errorSum);
+    fprintf( stdout, "Fehler zur korrekten Lsg: %lf\n", error );
+    
     // Ausgabe fuer error.txt
     fprintf(out, "\n" );
-    fprintf(out_error, "\n");
-    fclose(out_error);
 }
