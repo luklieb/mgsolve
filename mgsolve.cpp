@@ -18,18 +18,18 @@ double residuum(int nx, int ny, std::vector<double> &grid, std::vector<double> &
     double sum = 0;
     for(int i=1; i<ny-1; i++){
         for(int k=1; k<nx-1; k++){
-                double temp = ((-1.0f/h)*(grid[i*nx+(k-1)]+grid[i*nx+(k+1)]) - (1.0f/h)*(grid[(i-1)*nx+k]+grid[(i+1)*nx+k]) + ((2.0f/h+2.0f/h)*grid[i*nx+k]) - f_x_y[i*nx+k]);
+                double temp = ((grid[i*nx+(k-1)]+grid[i*nx+(k+1)]) + (grid[(i-1)*nx+k]+grid[(i+1)*nx+k]) - (4*grid[i*nx+k]))/(h*h) + f_x_y[i*nx+k];
                 sum += temp*temp;
         }
     }
-    residuum = sqrt((1.0f/(nx*ny))*sum);
+    residuum = sqrt((1.0/(nx*ny))*sum);
     return residuum;
 }
 
 void residual( int nx, int ny, std::vector<double> &grid, std::vector<double> &f_x_y, std::vector<double> &res, double h){
     for(int i=1; i<ny-1; i++){
         for(int k=1; k<nx-1; k++){
-                res[i*nx+k] = ((-1.0/h)*(grid[i*nx+(k-1)]+grid[i*nx+(k+1)]) - (1.0/h)*(grid[(i-1)*nx+k]+grid[(i+1)*nx+k]) + ((2.0/h+2.0/h)*grid[i*nx+k]) - f_x_y[i*nx+k]);
+                res[i*nx+k] = ((grid[i*nx+(k-1)]+grid[i*nx+(k+1)]) + (grid[(i-1)*nx+k]+grid[(i+1)*nx+k]) - (4*grid[i*nx+k]))/(h*h) + f_x_y[i*nx+k];
         }
     }
 }
@@ -40,8 +40,8 @@ void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std:
   for( int i=1; i<nx[l-1]-1; i++ ){
     for( int j=1; j<ny[l-1]-1; j++ ){
       to[i*nx[l-1]+j] = (   from[(2*i+1)*nx[l]+2*j-1] + 2*from[(2*i+1)*nx[l]+2*j] +   from[(2*i+1)*nx[l]+2*j+1]
-			+ 2*from[2*i*nx[l]+2*j-1]     + 4*from[2*i*nx[l]+2*j]     + 2*from[2*i*nx[l]+2*j+1]
-			+   from[(2*i-1)*nx[l]+2*j-1] + 2*from[(2*i-1)*nx[l]+2*j] +   from[(2*i-1)*nx[l]+2*j+1] ) /16.0;
+			+ 2*from[ 2*i   *nx[l]+2*j-1] + 4*from[ 2*i   *nx[l]+2*j] + 2*from[ 2*i*   nx[l]+2*j+1]
+			+   from[(2*i-1)*nx[l]+2*j-1] + 2*from[(2*i-1)*nx[l]+2*j] +   from[(2*i-1)*nx[l]+2*j+1] ) / 16.0;
     }
   }
 }
@@ -95,7 +95,7 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
   //Presmoothing
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v1 );
   fprintf( stderr, "RBGS finished\n");
-  
+    
   // Residuum
   residual( nx[l], ny[l], grid[l], f[l], res[l], h[l] );
   fprintf( stderr, "residual finished\n");
@@ -103,10 +103,11 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
   // restrict residual
   coarsening( l, res[l], f[l-1], nx, ny );
   fprintf( stderr, "coarsening finished\n");
-  
+
   if( l <= 1 ){
     // solve
-    Red_Black_Gauss( nx[l-1], ny[l-1], grid[l-1], f[l-1], h[l-1], 100 );
+    Red_Black_Gauss( nx[l-1], ny[l-1], grid[l-1], f[l-1], h[l-1], 1 );
+  
   }else{
     for( int i=1; i<nx[l-1]-1; i++ ){
       for( int j=1; j<ny[l-1]-1; j++ ){
@@ -116,21 +117,22 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
     for( int i=0; i<gamma; i++ ){
       multigrid( l-1, grid, f, nx, ny, h, res, v1, v2, gamma );
     }
-  }
+  
   
   // interpolation
     std::vector<double> c( nx[l]*ny[l], 0.0 );
     interpolation( l, grid[l-1], c, nx, ny );
     fprintf( stderr, "interpolation finished\n");
-	 
+
+
+    
     // corretion
     for( int i=1; i<nx[l]-1; i++ ){
       for( int j=1; j<ny[l]-1; j++ ){
 	grid[l][i*nx[l]+j] += c[i*nx[l]+j];
       }
     }
-  
-  
+  }
   //Postsmothing
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v2 );
 }
@@ -141,9 +143,9 @@ void testInterpolation(){
 					  0.0, 0.0, 0.0, 0.0, 0.0,
 					  0.0, 0.0, 0.0, 0.0, 0.0, 
 					  0.0, 0.0, 0.0, 0.0, 0.0 } );
-	std::vector<double> from( { 1.0, 1.0, 1.0,
-				    2.0, 0.0, 2.0,
-				    3.0, 5.0, 3.0 } );
+	std::vector<double> from( { 0.0, 0.0, 0.0,
+				    0.0, 25.0, 0.0,
+				    0.0, 0.0, 0.0 } );
 
 	std::vector<int> nx( {3, 5} );
 	std::vector<int> ny( {3, 5} );
@@ -180,8 +182,10 @@ void testCoarsening(){
 }
 
 int main(int argc, char **argv){
-testInterpolation();
-	// Ueberpruefung, ob Eingabeparamter passen
+  testInterpolation();
+  testCoarsening();
+  
+    // Ueberpruefung, ob Eingabeparamter passen
     if(argc != 3){
 		fprintf(stderr, "Usage: ./mgsolve l n\n");
 		exit(EXIT_SUCCESS);
@@ -198,8 +202,9 @@ testInterpolation();
     std::vector<int> ny( l, 0 );
     std::vector<double>  h( l, 0 );
     for( int i=l-1; i>=0; i-- ){
-      nx[i] = (int)(pow(2,i)+1);
-      ny[i] = (int)(pow(2,i)+1);
+      nx[i] = (int)(pow(2,i+1)+1);
+      ny[i] = (int)(pow(2,i+1)+1);
+      fprintf(stderr, "%d ", nx[i] );
       h[i] = 1.0/(nx[i]-1);
     }
     double convergence = 0.0;
@@ -249,11 +254,10 @@ testInterpolation();
       for( int i=l-1; i>=0; i--){
 	grid[i] = std::vector<double>(nx[i]*ny[i],0.0);
       }
-      for( int j=l-1; j>=l-1; j--){
-        for(int i=0; i<nx[j]; i++){
-            grid[j][nx[j]*(ny[j]-1)+i] = sin(M_PI*i*h[j])*sinh(M_PI);
-        }
-      }
+        for(int i=0; i<nx[l-1]; i++){
+            grid[l-1][nx[l-1]*(ny[l-1]-1)+i] = sin(M_PI*i*h[l-1])*sinh(M_PI);
+        
+	}
     }
 
      FILE *out_error = fopen("./error.txt", "w");
@@ -273,11 +277,11 @@ testInterpolation();
         multigrid( l-1, grid, f_x_y, nx, ny, h, res, n);
         new_residuum = residuum(nx[l-1], ny[l-1], grid[l-1], f_x_y[l-1], h[l-1]);
         fprintf(stdout, "L2 Norm: %lf\n", new_residuum);
-        if(j>0){
+	if(j>0){
             convergence = new_residuum / old_residuum;
             fprintf(out_error, "Convergence: %lf\n", convergence);
-            old_residuum = new_residuum;
         }
+        old_residuum = new_residuum;
     }
 
     fprintf( stderr, "multigrid finished successfully\n");
