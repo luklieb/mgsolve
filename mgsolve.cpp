@@ -6,7 +6,7 @@
 #include <math.h>
 #include <vector>
 
-#define GHOST false
+#define GHOST true
 
 // converts a timeval struct to seconds
 double timevalToDouble( struct timeval *t ){
@@ -88,6 +88,13 @@ void Red_Black_Gauss(int nx, int ny, std::vector<double> &grid, std::vector<doub
 			}
 		}
 	}
+	
+  if(GHOST){
+    for(int i=0; i<ny; i++){
+      grid[i*nx] = grid[i*nx+1] - h;
+      grid[i*nx+(nx-1)] = grid[i*nx+(nx-1)-1] - h;
+    }
+  }
 }
 
 void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::vector<double>>& f, std::vector<int>& nx,
@@ -127,6 +134,9 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
       }
     }
   }
+  
+
+  
   //Postsmothing
   Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v2 );
 }
@@ -210,7 +220,11 @@ int main(int argc, char **argv){
 	// Anlegen von f_x_y:
     std::vector<std::vector<double>> f_x_y(l);
     for( int i=l-1; i>=0; i--){
+      if(GHOST){
+	f_x_y[i] = std::vector<double>(nx[i]*ny[i],2.0);
+      }else{
 	f_x_y[i] = std::vector<double>(nx[i]*ny[i],0.0);
+      }
     }
     
     // Speicher fuer das residual allokieren
@@ -225,11 +239,11 @@ int main(int argc, char **argv){
     // Initialisierung des Gitters
     if(GHOST){
         for( int i=l-1; i>=0; i--){
-	  grid[i] = std::vector<double>(nx[i]*ny[i], 2.0);
+	  grid[i] = std::vector<double>(nx[i]*ny[i], 0.0);
 	}
 	
 	// Dirichlet RDB setzten aber nicht auf den Ghost-Layers 
-	for( int j=l-1; j>=0; j--){
+	for( int j=l-1; j>=l-1; j--){
 	  for(int i=0; i<nx[j]-2; i++){
 	      grid[j][i+1] = i*h[j]*(1-i*h[j]);
 	      grid[j][nx[j]*(ny[j]-1)+i+1] = i*h[j]*(1-i*h[j]);
@@ -293,12 +307,12 @@ int main(int argc, char **argv){
         }
 	fprintf(out, "\n");
     }
+    // Ausgabe fuer error.txt
+    fprintf(out, "\n" );
     fclose(out);
 
     
     double error = sqrt((1.0/((nx[l-1]-1)*(ny[l-1]-1)))*errorSum);
     fprintf( stdout, "Fehler zur korrekten Lsg: %lf\n", error );
     
-    // Ausgabe fuer error.txt
-    fprintf(out, "\n" );
 }
