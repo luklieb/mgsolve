@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -O3 -Wall -Winline -Wshadow -Werror -fopenmp -std=c++11
+CXXFLAGS = -O3 -Wall -Winline -Wshadow -Werror -std=c++11
 
 INCLUDES =
 LDFLAGS =
