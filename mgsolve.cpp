@@ -6,7 +6,7 @@
 #include <math.h>
 #include <vector>
 
-#define GHOST true
+#define GHOST false
 
 // converts a timeval struct to seconds
 double timevalToDouble( struct timeval *t ){
@@ -37,8 +37,8 @@ void residual( int nx, int ny, std::vector<double> &grid, std::vector<double> &f
 // restrict a grid (from) with the full weighting stencile to another grid (to). From has size nx[l] and to has size nx[l-1].
 void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std::vector<int>& nx, std::vector<int>& ny ){
     
-  for( int i=1; i<nx[l-1]-1; i++ ){
-    for( int j=1; j<ny[l-1]-1; j++ ){
+  for( int i=1; i<ny[l-1]-1; i++ ){
+    for( int j=1; j<nx[l-1]-1; j++ ){
       to[i*nx[l-1]+j] = (   from[(2*i+1)*nx[l]+2*j-1] + 2*from[(2*i+1)*nx[l]+2*j] +   from[(2*i+1)*nx[l]+2*j+1]
 			+ 2*from[ 2*i   *nx[l]+2*j-1] + 4*from[ 2*i   *nx[l]+2*j] + 2*from[ 2*i*   nx[l]+2*j+1]
 			+   from[(2*i-1)*nx[l]+2*j-1] + 2*from[(2*i-1)*nx[l]+2*j] +   from[(2*i-1)*nx[l]+2*j+1] ) / 16.0;
@@ -47,8 +47,8 @@ void coarsening( int l, std::vector<double>& from, std::vector<double>& to, std:
 }
 
 void interpolation( int l, std::vector<double>& from, std::vector<double>& to, std::vector<int>& nx, std::vector<int>& ny ){
-    for( int i=1; i<nx[l]-1; i++ ){
-      for( int j=1; j<ny[l]-1; j++ ){
+    for( int i=1; i<ny[l]-1; i++ ){
+      for( int j=1; j<nx[l]-1; j++ ){
 	if( i%2 == 0 && j%2 == 0 ){
 	  // wert uebernehmen
 	  to[i*nx[l]+j] = from[(i/2)*nx[l-1]+(j/2)];
@@ -113,8 +113,8 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
     Red_Black_Gauss( nx[l-1], ny[l-1], grid[l-1], f[l-1], h[l-1], 1 );
   
   }else{
-    for( int i=1; i<nx[l-1]-1; i++ ){
-      for( int j=1; j<ny[l-1]-1; j++ ){
+    for( int i=1; i<ny[l-1]-1; i++ ){
+      for( int j=1; j<nx[l-1]-1; j++ ){
 	grid[l-1][i*nx[l-1]+j] = 0.0;
       }
     }
@@ -128,17 +128,16 @@ void multigrid( int l, std::vector<std::vector<double>>& grid, std::vector<std::
     interpolation( l, grid[l-1], c, nx, ny );
    
     // corretion
-    for( int i=1; i<nx[l]-1; i++ ){
-      for( int j=1; j<ny[l]-1; j++ ){
+    for( int i=1; i<ny[l]-1; i++ ){
+      for( int j=1; j<nx[l]-1; j++ ){
 	grid[l][i*nx[l]+j] += c[i*nx[l]+j];
       }
     }
   }
-  
-
-  
+ 
+ 
   //Postsmothing
-  Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v2 );
+  Red_Black_Gauss( nx[l], ny[l], grid[l], f[l], h[l], v2 ); 
 }
 
 void testInterpolation(){
@@ -243,18 +242,37 @@ int main(int argc, char **argv){
 	}
 	
 	// Dirichlet RDB setzten aber nicht auf den Ghost-Layers 
-	for( int j=l-1; j>=l-1; j--){
-	  for(int i=0; i<nx[j]-2; i++){
-	      grid[j][i+1] = i*h[j]*(1-i*h[j]);
-	      grid[j][nx[j]*(ny[j]-1)+i+1] = i*h[j]*(1-i*h[j]);
+	  for(int i=0; i<nx[l-1]-2; i++){
+	      grid[l-1][i+1] 			 = i*h[l-1]*(1-i*h[l-1]);
+	      grid[l-1][(nx[l-1])*(ny[l-1]-1)+i+1] = i*h[l-1]*(1-i*h[l-1]);
 	  }
-	  for(int i=0; i<ny[j]; i++){
-	      grid[j][i*nx[j]] = -h[j];
-	      grid[j][i*nx[j]+(nx[j]-1)] = -h[j];
+	  for(int i=0; i<ny[l-1]; i++){
+	      grid[l-1][i*nx[l-1]] = -h[l-1];
+	      grid[l-1][i*nx[l-1]+(nx[l-1]-1)] = -h[l-1];
 	  }
-	}
+	
+    
+    
+    
+        FILE *out = fopen("./init.txt", "w");
+	if(out == NULL){
+		perror("fopen");
+		exit(EXIT_FAILURE);
     }
-    else{
+    // Ausgabe fuer solution.txt
+    fprintf(out, "# x y u(x,y)\n");
+    for(int j=0; j<ny[l-1]; j++){
+        for(int t=0; t<nx[l-1]; t++){
+            double x = (double)t/(double)(nx[l-1]-1);
+            double y = (double)j/(double)(ny[l-1]-1);	    
+            fprintf(out, "%.5lf %.5lf %.8lf\n", x, y, grid[l-1][j*nx[l-1]+t]);
+        }
+	fprintf(out, "\n");
+    }
+    fprintf(out, "\n" );
+    fclose(out);
+    
+    }else{
       for( int i=l-1; i>=0; i--){
 	grid[i] = std::vector<double>(nx[i]*ny[i],0.0);
       }
@@ -293,7 +311,7 @@ int main(int argc, char **argv){
 		exit(EXIT_FAILURE);
     }
 
-  double errorSum = 0.0;
+    double errorSum = 0.0;
     // Ausgabe fuer solution.txt
     fprintf(out, "# x y u(x,y)\n");
     for(int j=0; j<ny[l-1]; j++){
@@ -303,7 +321,7 @@ int main(int argc, char **argv){
 	    double temp = grid[l-1][j*ny[l-1]+t] - sin(x*M_PI)*sinh(y*M_PI);
 	    errorSum += temp * temp;
 	    
-            fprintf(out, "%.5lf %.5lf %.8lf\n", x, y, grid[l-1][j*ny[l-1]+t]);
+            fprintf(out, "%.5lf %.5lf %.8lf\n", x, y, grid[l-1][j*nx[l-1]+t]);
         }
 	fprintf(out, "\n");
     }
