@@ -1,5 +1,6 @@
-set pm3d
-set hidden3d
-splot "solution.txt" with lines
+#set pm3d
+#set hidden3d
+set xrange [0:1]
+splot "solution.txt", x*(1-x)
 pause -1 "hit any key to continue"
  

@@ -9,7 +9,7 @@
 #include <sys/time.h>
 
 
-#define GHOST false
+#define GHOST true
 
 typedef double type;
 typedef std::vector<type> typeVec;
@@ -142,7 +142,7 @@ void interpolation(int l, grid<type>& from, grid<type>& to, intVec& nx, intVec& 
 	}
 }
 
-void Red_Black_Gauss(int nx, int ny, grid<type> &u, grid<type> &f, double h, int numIterations){
+void Red_Black_Gauss(int nx, int ny, grid<type> &u, grid<type> &f, double h, int finest, int numIterations){
 
 	for (int iterations = 0; iterations<numIterations; iterations++){
 		for (int m = 1; m<ny - 1; m++){
@@ -165,18 +165,22 @@ void Red_Black_Gauss(int nx, int ny, grid<type> &u, grid<type> &f, double h, int
 		}
 	}
 
-	if (GHOST){
-		for (int i = 0; i<ny; i++){
-			u(0, i) = u(1, i) - h;
-			u(nx - 1, i) = u(nx - 2, i) - h;
-		}
-	}
+    if (finest==1){
+        if (GHOST){
+            for (int i = 0; i<ny; i++){
+                u(0, i) = u(1, i) - h;
+                u(nx - 1, i) = u(nx - 2, i) - h;
+            }
+        }
+    }
+
 }
 
 void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, intVec& nx,
-	intVec& ny, std::vector<type>& h, std::vector<grid<type>>& res, int v1 = 2, int v2 = 1, int gamma = 1){
-	//Presmoothing
-	Red_Black_Gauss(nx[l], ny[l], u[l], f[l], h[l], v1);
+    intVec& ny, std::vector<type>& h, std::vector<grid<type>>& res, int finest, int v1 = 2, int v2 = 1, int gamma = 1){
+
+    //Presmoothing
+    Red_Black_Gauss(nx[l], ny[l], u[l], f[l], h[l], finest, v1);
 
 	// Residuum
 	residual(nx[l], ny[l], u[l], f[l], res[l], h[l]);
@@ -186,7 +190,7 @@ void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, in
 
 	if (l <= 1){
 		// solve
-		Red_Black_Gauss(nx[l - 1], ny[l - 1], u[l - 1], f[l - 1], h[l - 1], 1);
+        Red_Black_Gauss(nx[l - 1], ny[l - 1], u[l - 1], f[l - 1], h[l - 1], finest, 1);
 
 	}
 	else{
@@ -196,7 +200,7 @@ void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, in
 			}
 		}
 		for (int i = 0; i<gamma; i++){
-			multigrid(l - 1, u, f, nx, ny, h, res, v1, v2, gamma);
+            multigrid(l - 1, u, f, nx, ny, h, res, 0, v1, v2, gamma);
 		}
 
 
@@ -214,7 +218,7 @@ void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, in
 
 
 	//Postsmothing
-	Red_Black_Gauss(nx[l], ny[l], u[l], f[l], h[l], v2);
+    Red_Black_Gauss(nx[l], ny[l], u[l], f[l], h[l], finest, v2);
 }
 
 int main(int argc, char **argv){
@@ -301,7 +305,7 @@ int main(int argc, char **argv){
 
 	// Multigrid solver ------------------------------------------------------------------------------------------------
 	for (int j = 0; j<n; j++){
-		multigrid(l - 1, u, f, nx, ny, h, res, n);
+        multigrid(l - 1, u, f, nx, ny, h, res, n, 1);
 
 		// computing the convergence faktor in each cycle
 		new_residuum = residuum(nx[l - 1], ny[l - 1], u[l - 1], f[l - 1], h[l - 1]);
@@ -323,18 +327,35 @@ int main(int argc, char **argv){
 
 	double errorSum = 0.0;
 	// Ausgabe fuer solution.txt
-	out << "# x y u(x,y)\n" << std::endl;
-	for (int j = 0; j<ny[l - 1]; j++){
-		for (int t = 0; t<nx[l - 1]; t++){
-			double x = (double)t / (double)(nx[l - 1] - 1);
-			double y = (double)j / (double)(ny[l - 1] - 1);
-			double temp = u[l - 1](t, j) - sin(x*M_PI)*sinh(y*M_PI);
-			errorSum += temp * temp;
 
-			out <<  x << " " << y << " " << u[l - 1](t, j) << std::endl;
-		}
-		out << std::endl;
-	}
+    if(GHOST){
+        out << "# x y u(x,y)\n" << std::endl;
+        for (int j = 0; j<ny[l - 1]; j++){
+            for (int t = 0; t<nx[l - 1]-2; t++){
+                    double x = (double)t / (double)(nx[l - 1] - 3);
+                    double y = (double)j / (double)(ny[l - 1] - 1);
+                    double temp = u[l - 1](t+1, j) - x*(1-x);
+                    errorSum += temp * temp;
+
+                    out <<  x << " " << y << " " << u[l - 1](t+1, j) << std::endl;
+            }
+            out << std::endl;
+        }
+    }else{
+        out << "# x y u(x,y)\n" << std::endl;
+        for (int j = 0; j<ny[l - 1]; j++){
+            for (int t = 0; t<nx[l - 1]; t++){
+                    double x = (double)t / (double)(nx[l - 1] - 1);
+                    double y = (double)j / (double)(ny[l - 1] - 1);
+                    double temp = u[l - 1](t, j) - sin(x*M_PI)*sinh(y*M_PI);
+                    errorSum += temp * temp;
+
+                    out <<  x << " " << y << " " << u[l - 1](t, j) << std::endl;
+            }
+            out << std::endl;
+        }
+    }
+
 	out.close();
 	
 
