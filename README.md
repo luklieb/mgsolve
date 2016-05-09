@@ -16,6 +16,6 @@ This file includes:
   - mgsolve.cpp
   - Auswertung.pdf
 
-
+In Auswertung.pdf you can find an "Meshsize vs. L2 error" for the regualr task on page one. On page three there is a graph for the BONUS task. 
 
 
