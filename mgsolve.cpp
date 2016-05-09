@@ -9,7 +9,7 @@
 #include <sys/time.h>
 
 
-#define GHOST true
+#define GHOST false
 
 typedef double type;
 typedef std::vector<type> typeVec;
