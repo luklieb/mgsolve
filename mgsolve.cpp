@@ -1,5 +1,3 @@
-#define _USE_MATH_DEFINES
-#define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,8 +6,8 @@
 #include <vector>
 #include <fstream>
 #include <assert.h>
+#include <sys/time.h>
 
-//#include "grid.hpp"
 
 #define GHOST false
 
@@ -44,8 +42,12 @@ public:
 };
 
 
-
 //___________________________________________________________________________________________________________________
+
+// converts a timeval struct to seconds
+double timevalToDouble( struct timeval *t ){
+    return (double)(t->tv_sec) + (((double)(t->tv_usec))/1000000.0);
+}
 
 // calculates the l2-norm of the residual
 double residuum(int nx, int ny, grid<type> &u, grid<type> &f, double h){
@@ -215,23 +217,19 @@ void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, in
 	Red_Black_Gauss(nx[l], ny[l], u[l], f[l], h[l], v2);
 }
 
-//int main(int argc, char **argv){
-int main(){
+int main(int argc, char **argv){
 
 // Ueberpruefung, ob Eingabeparamter passen
-//	if (argc != 3){
-//		fprintf(stderr, "Usage: ./mgsolve levels numberOfVCycles\n");
-//		exit(EXIT_SUCCESS);
-//	}
-	//	l = atoi(argv[1]);
-	//	n = atoi(argv[2]);
+    if (argc != 3){
+        fprintf(stderr, "Usage: ./mgsolve levels numberOfVCycles\n");
+        exit(EXIT_SUCCESS);
+    }
 
 	// definitions
-	int l = 0;	// number of levels
-	int n = 0;	// number of v-cycles
-	l = 5;
-	n = 10;
-	intVec  nx(l, 0);	// total number of gird points in x-direction
+    int l = atoi(argv[1]);	// number of levels
+    int n = atoi(argv[2]);	// number of v-cycles
+
+    intVec  nx(l, 0);	// total number of gird points in x-direction
 	intVec  ny(l, 0);	// total number of grid points in y-direction
 	typeVec h(l, 0.0);	// mesh size of each levels, where h[0] is the mesh size of the coarsesed grid
 	type convergence = 0.0;	// convergence factor ( res_i+1 / res_i )
@@ -297,7 +295,9 @@ int main(){
 		}
 	}
 
-
+    // TIMER
+    struct timeval t1;
+    gettimeofday(&t1, NULL);
 
 	// Multigrid solver ------------------------------------------------------------------------------------------------
 	for (int j = 0; j<n; j++){
@@ -313,6 +313,9 @@ int main(){
 		old_residuum = new_residuum;
 	}
 
+    struct timeval t2;
+    gettimeofday(&t2, NULL);
+    fprintf(stdout, "Timer Multigrid: %lf\n", timevalToDouble(&t2)-timevalToDouble(&t1));
 
 	// output --------------------------------------------------------------------------------------------------------------
 	std::ofstream out;
