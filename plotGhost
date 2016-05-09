@@ -1,0 +1,5 @@
+set pm3d
+set hidden3d
+splot "solution.txt" with lines
+pause -1 "hit any key to continue"
+ 
