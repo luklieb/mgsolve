@@ -51,16 +51,16 @@ double timevalToDouble( struct timeval *t ){
 
 // calculates the l2-norm of the residual
 double residuum(int nx, int ny, grid<type> &u, grid<type> &f, double h){
-	double residuum = 0;
-	double sum = 0;
+    double residuum = 0;
+    double sum = 0;
 	for (int i = 1; i<ny - 1; i++){
 		for (int k = 1; k<nx - 1; k++){
-			double temp = ((u(k - 1, i) + u(k + 1, i)) + (u(k, i - 1) + u(k, i + 1)) - (4 * u(k, i))) / (h*h) + f(k, i);
+            double temp = ((u(k - 1, i) + u(k + 1, i)) + (u(k, i - 1) + u(k, i + 1)) - (4 * u(k, i))) / (h*h) + f(k, i);
 			sum += temp*temp;
 		}
 	}
 	residuum = sqrt((1.0 / ((nx - 1)*(ny - 1)))*sum);
-	return residuum;
+    return residuum;
 }
 
 // calculates the residual
@@ -176,6 +176,8 @@ void Red_Black_Gauss(int nx, int ny, grid<type> &u, grid<type> &f, double h, int
 
 }
 
+
+//Parameter "finest" wird fuer die Neuman-RB (GHOST) benoetigt. Damit wird nur beim feinsten Grid die Neumann-RB im Red-Black-Gauss berechnet
 void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, intVec& nx,
     intVec& ny, std::vector<type>& h, std::vector<grid<type>>& res, int finest, int v1 = 2, int v2 = 1, int gamma = 1){
 
@@ -199,7 +201,8 @@ void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, in
 				u[l - 1](j, i) = 0.0;
 			}
 		}
-		for (int i = 0; i<gamma; i++){
+        for (int i = 0; i<gamma; i++){
+
             multigrid(l - 1, u, f, nx, ny, h, res, 0, v1, v2, gamma);
 		}
 
@@ -208,7 +211,7 @@ void multigrid(int l, std::vector<grid<type>>& u, std::vector<grid<type>>& f, in
 		grid<type> correction(nx[l], ny[l], 0.0);
 		interpolation(l, u[l - 1], correction, nx, ny);
 
-		// corretion
+        // correction
 		for (int i = 1; i<ny[l] - 1; i++){
 			for (int j = 1; j<nx[l] - 1; j++){
 				u[l](j, i) += correction(j, i);
@@ -305,7 +308,7 @@ int main(int argc, char **argv){
 
 	// Multigrid solver ------------------------------------------------------------------------------------------------
 	for (int j = 0; j<n; j++){
-        multigrid(l - 1, u, f, nx, ny, h, res, n, 1);
+        multigrid(l - 1, u, f, nx, ny, h, res, 1);
 
 		// computing the convergence faktor in each cycle
 		new_residuum = residuum(nx[l - 1], ny[l - 1], u[l - 1], f[l - 1], h[l - 1]);

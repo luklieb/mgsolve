@@ -1,0 +1,7 @@
+set logscale x
+set xtics (0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625)
+set title "L2 error vs Meshsize with NEUMAN BCS with 30 v-cycles each"
+set xlabel "Meshsize h"
+set ylabel "L2 error e"
+plot "Neumann_Error.txt" with lines
+pause -1 "hit any key to continue"
